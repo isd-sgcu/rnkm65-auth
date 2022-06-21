@@ -27,3 +27,6 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Compile proto file
 1. Run `make proto`
+
+## Special Thanks
+Special thanks to [saengowp](https://github.com/saengowp) for [Chula SSO Mock](https://github.com/saengowp/chulassomock)
