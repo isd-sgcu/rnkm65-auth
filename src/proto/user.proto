@@ -5,10 +5,8 @@ package user;
 option go_package = "src/proto";
 
 service UserService {
-  rpc FindOne(FindOneUserRequest) returns (FindOneUserResponse){}
   rpc FindByStudentID(FindByStudentIDUserRequest) returns(FindByStudentIDUserResponse) {}
   rpc Create(CreateUserRequest) returns (CreateUserResponse){}
-  rpc CreateOrUpdate(CreateOrUpdateUserRequest) returns (CreateOrUpdateUserResponse){}
 }
 
 message User{
@@ -30,16 +28,6 @@ message User{
   string imageUrl = 16;
 }
 
-// FindOne
-
-message FindOneUserRequest{
-  string id = 1;
-}
-
-message FindOneUserResponse{
-  User user = 1;
-}
-
 // Find By Student ID
 
 message FindByStudentIDUserRequest{
@@ -57,15 +45,5 @@ message CreateUserRequest{
 }
 
 message CreateUserResponse{
-  User user = 1;
-}
-
-// Create or Update
-
-message CreateOrUpdateUserRequest{
-  User user = 1;
-}
-
-message CreateOrUpdateUserResponse{
   User user = 1;
 }
