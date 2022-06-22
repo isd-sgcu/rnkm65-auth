@@ -22,6 +22,16 @@ func (r *RepositoryMock) FindByRefreshToken(id string, result *model.Auth) error
 	return args.Error(1)
 }
 
+func (r *RepositoryMock) FindByUserID(id string, in *model.Auth) error {
+	args := r.Called(id, in)
+
+	if args.Get(0) != nil {
+		*in = *args.Get(0).(*model.Auth)
+	}
+
+	return args.Error(1)
+}
+
 func (r *RepositoryMock) Create(in *model.Auth) error {
 	args := r.Called(in)
 
