@@ -19,9 +19,16 @@ type App struct {
 	Debug bool `mapstructure:"debug"`
 }
 
+type ChulaSSO struct {
+	Host         string `mapstructure:"host"`
+	DeeAppID     string `mapstructure:"app-id"`
+	DeeAppSecret string `mapstructure:"app-secret"`
+}
+
 type Config struct {
 	Database Database `mapstructure:"database"`
 	App      App      `mapstructure:"app"`
+	ChulaSSO ChulaSSO `mapstructure:"chula-sso"`
 }
 
 func LoadConfig() (config *Config, err error) {

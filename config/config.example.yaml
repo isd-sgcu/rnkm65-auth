@@ -5,11 +5,11 @@ database:
   username: root
   password: root
 
-redis:
-  host: localhost
-  port: 6379
-  password: ""
-
 app:
   port: 3002
   debug: true
+
+chula-sso:
+  host: https://account.it.chula.ac.th
+  app-id: <app id>
+  app-secret: <app secret>
