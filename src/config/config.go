@@ -25,10 +25,17 @@ type ChulaSSO struct {
 	DeeAppSecret string `mapstructure:"app-secret"`
 }
 
+type Jwt struct {
+	Secret    string `mapstructure:"secret"`
+	ExpiresIn int32  `mapstructure:"expires_in"`
+	Issuer    string `mapstructure:"issuer"`
+}
+
 type Config struct {
 	Database Database `mapstructure:"database"`
 	App      App      `mapstructure:"app"`
 	ChulaSSO ChulaSSO `mapstructure:"chula-sso"`
+	Jwt      Jwt      `mapstructure:"jwt"`
 }
 
 func LoadConfig() (config *Config, err error) {
