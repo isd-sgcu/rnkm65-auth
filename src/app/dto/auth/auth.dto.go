@@ -1,5 +1,7 @@
 package auth
 
+import "github.com/golang-jwt/jwt/v4"
+
 type ChulaSSOCredential struct {
 	UID         string   `json:"uid"`
 	Username    string   `json:"username"`
@@ -12,4 +14,10 @@ type ChulaSSOCredential struct {
 	FirstnameTH string   `json:"firstnameth"`
 	LastnameTH  string   `json:"lastnameth"`
 	Ouid        string   `json:"ouid"`
+}
+
+type TokenPayloadAuth struct {
+	jwt.RegisteredClaims
+	UserId string `json:"user_id"`
+	Role   string `json:"role"`
 }
