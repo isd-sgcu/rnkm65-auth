@@ -22,8 +22,11 @@ func (s *Service) FindByStudentID(sid string) (*proto.User, error) {
 
 	res, err := s.client.FindByStudentID(ctx, &proto.FindByStudentIDUserRequest{StudentId: sid})
 	if err != nil {
-		st, _ := status.FromError(err)
-		return nil, errors.New(st.Message())
+		st, ok := status.FromError(err)
+		if ok {
+			return nil, errors.New(st.Message())
+		}
+		return nil, errors.New("Service is down")
 	}
 
 	return res.User, nil
@@ -35,8 +38,11 @@ func (s *Service) Create(user *proto.User) (*proto.User, error) {
 
 	res, err := s.client.Create(ctx, &proto.CreateUserRequest{User: user})
 	if err != nil {
-		st, _ := status.FromError(err)
-		return nil, errors.New(st.Message())
+		st, ok := status.FromError(err)
+		if ok {
+			return nil, errors.New(st.Message())
+		}
+		return nil, errors.New("Service is down")
 	}
 
 	return res.User, nil

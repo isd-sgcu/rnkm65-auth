@@ -2,7 +2,7 @@ package user
 
 import (
 	"github.com/bxcodec/faker/v3"
-	mock "github.com/isd-sgcu/rnkm65-auth/src/mocks/auth"
+	mock "github.com/isd-sgcu/rnkm65-auth/src/mocks/user"
 	"github.com/isd-sgcu/rnkm65-auth/src/proto"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func (t *UserServiceTest) SetupTest() {
 func (t *UserServiceTest) TestFindByStudentIDSuccess() {
 	want := t.UserDto
 
-	c := &mock.UserClientMock{}
+	c := &mock.ClientMock{}
 	c.On("FindByStudentID", &proto.FindByStudentIDUserRequest{StudentId: t.UserDto.StudentID}).
 		Return(&proto.FindByStudentIDUserResponse{User: t.UserDto}, nil)
 
@@ -67,7 +67,7 @@ func (t *UserServiceTest) TestFindByStudentIDSuccess() {
 func (t *UserServiceTest) TestFindByStudentIDUnauthorized() {
 	want := t.UnauthorizedErr
 
-	c := &mock.UserClientMock{}
+	c := &mock.ClientMock{}
 	c.On("FindByStudentID", &proto.FindByStudentIDUserRequest{StudentId: t.UserDto.StudentID}).
 		Return(nil, status.Error(codes.Unauthenticated, t.UnauthorizedErr.Error()))
 
@@ -82,7 +82,7 @@ func (t *UserServiceTest) TestFindByStudentIDUnauthorized() {
 func (t *UserServiceTest) TestFindByStudentIDNotFound() {
 	want := t.NotFoundErr
 
-	c := &mock.UserClientMock{}
+	c := &mock.ClientMock{}
 	c.On("FindByStudentID", &proto.FindByStudentIDUserRequest{StudentId: t.UserDto.StudentID}).
 		Return(nil, status.Error(codes.NotFound, t.NotFoundErr.Error()))
 
@@ -97,7 +97,7 @@ func (t *UserServiceTest) TestFindByStudentIDNotFound() {
 func (t *UserServiceTest) TestFindByStudentIDGrpcError() {
 	want := t.ServiceDownErr
 
-	c := &mock.UserClientMock{}
+	c := &mock.ClientMock{}
 	c.On("FindByStudentID", &proto.FindByStudentIDUserRequest{StudentId: t.UserDto.StudentID}).
 		Return(nil, status.Error(codes.Unavailable, t.ServiceDownErr.Error()))
 
@@ -112,7 +112,7 @@ func (t *UserServiceTest) TestFindByStudentIDGrpcError() {
 func (t *UserServiceTest) TestCreateSuccess() {
 	want := t.UserDto
 
-	c := &mock.UserClientMock{}
+	c := &mock.ClientMock{}
 	c.On("Create", &proto.CreateUserRequest{User: &proto.User{}}).
 		Return(&proto.CreateUserResponse{User: t.UserDto}, nil)
 
@@ -127,7 +127,7 @@ func (t *UserServiceTest) TestCreateSuccess() {
 func (t *UserServiceTest) TestCreateUnauthorized() {
 	want := t.UnauthorizedErr
 
-	c := &mock.UserClientMock{}
+	c := &mock.ClientMock{}
 	c.On("Create", &proto.CreateUserRequest{User: &proto.User{}}).
 		Return(nil, status.Error(codes.Unauthenticated, t.UnauthorizedErr.Error()))
 
@@ -142,7 +142,7 @@ func (t *UserServiceTest) TestCreateUnauthorized() {
 func (t *UserServiceTest) TestCreateGrpcErr() {
 	want := t.ServiceDownErr
 
-	c := &mock.UserClientMock{}
+	c := &mock.ClientMock{}
 	c.On("Create", &proto.CreateUserRequest{User: &proto.User{}}).
 		Return(nil, status.Error(codes.Unavailable, t.ServiceDownErr.Error()))
 
