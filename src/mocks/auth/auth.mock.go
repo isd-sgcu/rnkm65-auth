@@ -1,26 +1,15 @@
 package auth
 
 import (
-	"context"
+	"github.com/golang-jwt/jwt/v4"
 	dto "github.com/isd-sgcu/rnkm65-auth/src/app/dto/auth"
 	model "github.com/isd-sgcu/rnkm65-auth/src/app/model/auth"
 	"github.com/isd-sgcu/rnkm65-auth/src/proto"
 	"github.com/stretchr/testify/mock"
-	"google.golang.org/grpc"
 )
 
 type RepositoryMock struct {
 	mock.Mock
-}
-
-func (r *RepositoryMock) FindByStudentID(id string, result *model.Auth) error {
-	args := r.Called(id, result)
-
-	if args.Get(0) != nil {
-		*result = *args.Get(0).(*model.Auth)
-	}
-
-	return args.Error(1)
 }
 
 func (r *RepositoryMock) FindByRefreshToken(id string, result *model.Auth) error {
@@ -57,36 +46,46 @@ func (c *ChulaSSOClientMock) VerifyTicket(ticket string, result *dto.ChulaSSOCre
 	return args.Error(1)
 }
 
-type UserClientMock struct {
+type UserServiceMock struct {
 	mock.Mock
 }
 
-func (c *UserClientMock) FindOne(_ context.Context, in *proto.FindOneUserRequest, _ ...grpc.CallOption) (res *proto.FindOneUserResponse, err error) {
-	args := c.Called(in)
+func (c *UserServiceMock) FindByStudentID(id string) (result *proto.User, err error) {
+	args := c.Called(id)
 
 	if args.Get(0) != nil {
-		res = args.Get(0).(*proto.FindOneUserResponse)
+		result = args.Get(0).(*proto.User)
 	}
 
-	return res, args.Error(1)
+	return result, args.Error(1)
 }
 
-func (c *UserClientMock) Create(_ context.Context, in *proto.CreateUserRequest, _ ...grpc.CallOption) (res *proto.CreateUserResponse, err error) {
+func (c *UserServiceMock) Create(in *proto.User) (result *proto.User, err error) {
 	args := c.Called(in)
 
 	if args.Get(0) != nil {
-		res = args.Get(0).(*proto.CreateUserResponse)
+		result = args.Get(0).(*proto.User)
 	}
 
-	return res, args.Error(1)
+	return result, args.Error(1)
 }
 
-func (c *UserClientMock) CreateOrUpdate(_ context.Context, in *proto.CreateOrUpdateUserRequest, _ ...grpc.CallOption) (res *proto.CreateOrUpdateUserResponse, err error) {
-	args := c.Called(in)
+type JwtServiceMock struct {
+	mock.Mock
+}
+
+func (s *JwtServiceMock) SignAuth(in *model.Auth) (token string, err error) {
+	args := s.Called(in)
+
+	return args.String(0), args.Error(1)
+}
+
+func (s *JwtServiceMock) VerifyAuth(token string) (decode *jwt.Token, err error) {
+	args := s.Called(token)
 
 	if args.Get(0) != nil {
-		res = args.Get(0).(*proto.CreateOrUpdateUserResponse)
+		*decode = *args.Get(0).(*jwt.Token)
 	}
 
-	return res, args.Error(1)
+	return decode, args.Error(0)
 }

@@ -1,12 +1,12 @@
 package auth
 
-import "github.com/isd-sgcu/rnkm65-auth/src/app/model"
+import (
+	"github.com/isd-sgcu/rnkm65-auth/src/app/model"
+)
 
 type Auth struct {
 	model.Base
-	StudentID    string `json:"student_id" gorm:"index:,unique"`
-	Year         string `json:"year" gorm:"type:tinytext"`
-	Faculty      string `json:"faculty" gorm:"type:tinytext"`
-	UserID       string `json:"user_id" gorm:"index:,unique"`
+	UserID       string `json:"user_id" gorm:"type:tinytext"`
+	Role         string `json:"role" gorm:"type:tinytext"`
 	RefreshToken string `json:"refresh_token" gorm:"index"`
 }
