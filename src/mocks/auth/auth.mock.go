@@ -42,6 +42,16 @@ func (r *RepositoryMock) Create(in *model.Auth) error {
 	return args.Error(1)
 }
 
+func (r *RepositoryMock) Update(id string, in *model.Auth) error {
+	args := r.Called(in)
+
+	if args.Get(0) != nil {
+		*in = *args.Get(0).(*model.Auth)
+	}
+
+	return args.Error(1)
+}
+
 type ChulaSSOClientMock struct {
 	mock.Mock
 }
@@ -98,4 +108,18 @@ func (s *JwtServiceMock) VerifyAuth(token string) (decode *jwt.Token, err error)
 	}
 
 	return decode, args.Error(0)
+}
+
+type TokenServiceMock struct {
+	mock.Mock
+}
+
+func (s *TokenServiceMock) CreateOrUpdateCredentials(in *model.Auth) (credential *proto.Credential, err error) {
+	args := s.Called(in)
+
+	if args.Get(0) != nil {
+		credential = args.Get(0).(*proto.Credential)
+	}
+
+	return credential, args.Error(1)
 }
