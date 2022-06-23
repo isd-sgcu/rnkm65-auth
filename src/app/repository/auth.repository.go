@@ -20,3 +20,7 @@ func (r *Repository) FindByRefreshToken(refreshToken string, result *model.Auth)
 func (r *Repository) Create(auth *model.Auth) error {
 	return r.db.Create(&auth).Error
 }
+
+func (r *Repository) Update(id string, auth *model.Auth) error {
+	return r.db.Where(id).Updates(&auth).First(&auth).Error
+}
