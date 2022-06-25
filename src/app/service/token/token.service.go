@@ -14,7 +14,6 @@ import (
 
 type Service struct {
 	jwtService IJwtService
-	secret     string
 }
 
 type IJwtService interface {
@@ -23,24 +22,25 @@ type IJwtService interface {
 	GetConfig() *config.Jwt
 }
 
-func NewTokenService(jwtService IJwtService, secret string) *Service {
+func NewTokenService(jwtService IJwtService) *Service {
 	return &Service{
 		jwtService: jwtService,
-		secret:     secret,
 	}
 }
 
-func (s *Service) CreateAndUpdateCredentials(auth *model.Auth) (*proto.Credential, error) {
+func (s *Service) CreateCredentials(auth *model.Auth, secret string) (*proto.Credential, error) {
 	token, err := s.jwtService.SignAuth(auth)
 	if err != nil {
 		return nil, err
 	}
 
-	refreshToken := createRefreshToken()
-	encodedRefreshToken, err := utils.Encrypt([]byte(s.secret), refreshToken)
+	refreshToken := s.CreateRefreshToken()
+	encodedRefreshToken, err := utils.Encrypt([]byte(secret), refreshToken)
 	if err != nil {
 		return nil, err
 	}
+
+	auth.RefreshToken = refreshToken
 
 	credential := &proto.Credential{
 		AccessToken:  token,
@@ -70,6 +70,6 @@ func (s *Service) Validate(token string) (*dto.TokenPayloadAuth, error) {
 	return &payload, nil
 }
 
-func createRefreshToken() string {
+func (s *Service) CreateRefreshToken() string {
 	return uuid.New().String()
 }

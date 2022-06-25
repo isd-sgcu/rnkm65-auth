@@ -16,6 +16,7 @@ type Service struct {
 	chulaSSOClient IChulaSSOClient
 	tokenService   ITokenService
 	userService    IUserService
+	secret         string
 }
 
 type IRepository interface {
@@ -35,7 +36,8 @@ type IUserService interface {
 }
 
 type ITokenService interface {
-	CreateOrUpdateCredentials(*model.Auth) (*proto.Credential, error)
+	CreateCredentials(*model.Auth) (*proto.Credential, error)
+	Validate(string) (*dto.TokenPayloadAuth, error)
 }
 
 func NewService(
@@ -43,12 +45,14 @@ func NewService(
 	chulaSSOClient IChulaSSOClient,
 	tokenService ITokenService,
 	userService IUserService,
+	secret string,
 ) *Service {
 	return &Service{
 		repo:           repo,
 		chulaSSOClient: chulaSSOClient,
 		tokenService:   tokenService,
 		userService:    userService,
+		secret:         secret,
 	}
 }
 
@@ -111,18 +115,59 @@ func (s *Service) VerifyTicket(_ context.Context, req *proto.VerifyTicketRequest
 		}
 	}
 
-	credential, err := s.tokenService.CreateOrUpdateCredentials(&auth)
+	credentials, err := s.CreateNewCredential(&auth)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &proto.VerifyTicketResponse{Credential: credential}, err
+	return &proto.VerifyTicketResponse{Credential: credentials}, err
 }
 
-func (s *Service) Validate(context.Context, *proto.ValidateRequest) (res *proto.ValidateResponse, err error) {
-	return
+func (s *Service) Validate(_ context.Context, req *proto.ValidateRequest) (res *proto.ValidateResponse, err error) {
+	payload, err := s.tokenService.Validate(req.Token)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	return &proto.ValidateResponse{
+		UserId: payload.UserId,
+		Role:   payload.Role,
+	}, nil
 }
 
-func (s *Service) RefreshToken(context.Context, *proto.RefreshTokenRequest) (res *proto.RefreshTokenResponse, err error) {
-	return
+func (s *Service) RefreshToken(_ context.Context, req *proto.RefreshTokenRequest) (res *proto.RefreshTokenResponse, err error) {
+	decodedRefreshToken, err := utils.Decrypt([]byte(s.secret), req.RefreshToken)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "Invalid refresh token")
+	}
+
+	auth := model.Auth{}
+
+	err = s.repo.FindByRefreshToken(decodedRefreshToken, &auth)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "Invalid refresh token")
+	}
+
+	credentials, err := s.CreateNewCredential(&auth)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &proto.RefreshTokenResponse{Credential: credentials}, nil
+}
+
+func (s *Service) CreateNewCredential(auth *model.Auth) (*proto.Credential, error) {
+	credentials, err := s.tokenService.CreateCredentials(auth)
+	if err != nil {
+		return nil, err
+	}
+
+	auth.RefreshToken = credentials.RefreshToken
+
+	err = s.repo.Update(auth.ID.String(), auth)
+	if err != nil {
+		return nil, err
+	}
+
+	return credentials, nil
 }
