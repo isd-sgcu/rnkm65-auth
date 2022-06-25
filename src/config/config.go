@@ -15,8 +15,9 @@ type Database struct {
 }
 
 type App struct {
-	Port  int  `mapstructure:"port"`
-	Debug bool `mapstructure:"debug"`
+	Port   int    `mapstructure:"port"`
+	Debug  bool   `mapstructure:"debug"`
+	Secret string `mapstructure:"secret"`
 }
 
 type ChulaSSO struct {

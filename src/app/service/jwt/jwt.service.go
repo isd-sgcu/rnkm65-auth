@@ -48,3 +48,7 @@ func (s *Service) SignAuth(in *model.Auth) (string, error) {
 func (s *Service) VerifyAuth(token string) (*_jwt.Token, error) {
 	return _jwt.Parse(token, s.strategy.AuthDecode)
 }
+
+func (s *Service) GetConfig() *config.Jwt {
+	return &s.conf
+}

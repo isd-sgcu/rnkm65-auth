@@ -8,6 +8,7 @@ database:
 app:
   port: 3002
   debug: true
+  secret: <secret>
 
 chula-sso:
   host: https://account.it.chula.ac.th

@@ -4,6 +4,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	dto "github.com/isd-sgcu/rnkm65-auth/src/app/dto/auth"
 	model "github.com/isd-sgcu/rnkm65-auth/src/app/model/auth"
+	"github.com/isd-sgcu/rnkm65-auth/src/config"
 	"github.com/isd-sgcu/rnkm65-auth/src/proto"
 	"github.com/stretchr/testify/mock"
 )
@@ -104,17 +105,23 @@ func (s *JwtServiceMock) VerifyAuth(token string) (decode *jwt.Token, err error)
 	args := s.Called(token)
 
 	if args.Get(0) != nil {
-		*decode = *args.Get(0).(*jwt.Token)
+		decode = args.Get(0).(*jwt.Token)
 	}
 
-	return decode, args.Error(0)
+	return decode, args.Error(1)
+}
+
+func (s *JwtServiceMock) GetConfig() *config.Jwt {
+	args := s.Called()
+
+	return args.Get(0).(*config.Jwt)
 }
 
 type TokenServiceMock struct {
 	mock.Mock
 }
 
-func (s *TokenServiceMock) CreateOrUpdateCredentials(in *model.Auth) (credential *proto.Credential, err error) {
+func (s *TokenServiceMock) CreateCredentials(in *model.Auth) (credential *proto.Credential, err error) {
 	args := s.Called(in)
 
 	if args.Get(0) != nil {
@@ -122,4 +129,14 @@ func (s *TokenServiceMock) CreateOrUpdateCredentials(in *model.Auth) (credential
 	}
 
 	return credential, args.Error(1)
+}
+
+func (s *TokenServiceMock) Validate(token string) (payload *dto.TokenPayloadAuth, err error) {
+	args := s.Called(token)
+
+	if args.Get(0) != nil {
+		payload = args.Get(0).(*dto.TokenPayloadAuth)
+	}
+
+	return payload, args.Error(1)
 }
