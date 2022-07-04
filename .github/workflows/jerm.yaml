@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - jerm
+      - test
   pull_request:
     branches:
       - dev
