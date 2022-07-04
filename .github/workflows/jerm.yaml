@@ -3,6 +3,9 @@ on:
     branches:
       - dev
       - master
+  push:
+    branches:
+      - jerm
 jobs:
   push:
     name: jerm
