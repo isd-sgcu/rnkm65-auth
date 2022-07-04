@@ -1,0 +1,17 @@
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - jerm
+  pull_request:
+    branches:
+      - dev
+      - master
+
+jobs:
+  push:
+    name: push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: st4rchaser/jerm-action@v6.3.0
