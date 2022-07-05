@@ -69,6 +69,8 @@ jobs:
 
       - name: "Setup Kustomize"
         uses: karancode/kustomize-github-action@master
+        with:
+          kustomize_build_dir: ${{ env.GITOPS_BASE_PATH }}/${{ needs.build.outputs.BRANCH }}/${{ env.GITOPS_SERVICE_NAME }}
 
       - name: Set image
         working-directory: ${{ env.GITOPS_BASE_PATH }}/${{ needs.build.outputs.BRANCH }}/${{ env.GITOPS_SERVICE_NAME }}
