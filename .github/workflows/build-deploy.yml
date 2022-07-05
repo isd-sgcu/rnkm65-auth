@@ -56,8 +56,10 @@ jobs:
           repository: ${{ env.GITOPS_REPO }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set image
+      - name: Setup kustomize
         uses: imranismail/setup-kustomize@v1
+
+      - name: Set image
         run: |
           cd ${{ env.GITOPS_DIR }}
           kustomize edit set image ${{ env.IMAGE_NAME }}={{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
