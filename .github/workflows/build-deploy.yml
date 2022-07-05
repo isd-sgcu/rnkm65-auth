@@ -67,16 +67,11 @@ jobs:
           repository: ${{ env.GITOPS_REPO }}
           ssh-key: ${{ secrets.GITOPS_SSH_KEY }}
 
-      - name: Set dir path
-        run: echo "PATH=${{ env.GITOPS_BASE_PATH }}/${{ needs.build.outputs.BRANCH }}/${{ env.GITOPS_SERVICE_NAME }}" >> $GITHUB_ENV
-
       - name: "Setup Kustomize"
         uses: karancode/kustomize-github-action@master
-        with:
-          kustomize_build_dir: ${{ env.PATH }}
 
       - name: Set image
-        working-directory: ${{ env.PATH }}
+        working-directory: ${{ env.GITOPS_BASE_PATH }}/${{ needs.build.outputs.BRANCH }}/${{ env.GITOPS_SERVICE_NAME }}
         run: |
           kustomize edit set image ${{ env.IMAGE_NAME }}=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
