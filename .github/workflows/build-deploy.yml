@@ -72,7 +72,7 @@ jobs:
       - name: "Setup Kustomize"
         uses: karancode/kustomize-github-action@master
         with:
-          kustomize_build_dir: ${{{ env.PATH }}}
+          kustomize_build_dir: ${{ env.PATH }}
 
       - name: Set image
         working-directory: ${{ env.PATH }}
