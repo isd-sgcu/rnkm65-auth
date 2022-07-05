@@ -62,8 +62,8 @@ jobs:
           kustomize_build_dir: ${{ env.GITOPS_DIR }}
 
       - name: Set image
+        working-directory: ${{ env.GITOPS_DIR }}
         run: |
-          cd ${{ env.GITOPS_DIR }}
           kustomize edit set image ${{ env.IMAGE_NAME }}=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           git add .
           git commit -m "Set image tag to `${{ env.IMAGE_TAG }}`"
