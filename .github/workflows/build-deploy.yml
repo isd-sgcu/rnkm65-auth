@@ -75,7 +75,7 @@ jobs:
           kustomize_build_dir: ${{{ env.PATH }}}
 
       - name: Set image
-        working-directory: ${{{ env.PATH }}}
+        working-directory: ${{ env.PATH }}
         run: |
           kustomize edit set image ${{ env.IMAGE_NAME }}=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
