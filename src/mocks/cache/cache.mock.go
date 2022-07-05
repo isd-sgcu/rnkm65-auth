@@ -23,7 +23,9 @@ func (t *RepositoryMock) SaveCache(key string, v interface{}, ttl int) error {
 func (t *RepositoryMock) GetCache(key string, v interface{}) error {
 	args := t.Called(key, v)
 
-	v = t.V[key]
+	if args.Get(0) != nil {
+		*v.(*string) = *args.Get(0).(*string)
+	}
 
-	return args.Error(0)
+	return args.Error(1)
 }
