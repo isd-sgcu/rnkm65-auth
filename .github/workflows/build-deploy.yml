@@ -65,6 +65,10 @@ jobs:
         working-directory: ${{ env.GITOPS_DIR }}
         run: |
           kustomize edit set image ${{ env.IMAGE_NAME }}=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-          git add .
-          git commit -m "Set image tag to `${{ env.IMAGE_TAG }}`"
-          git push
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          author_name: ${{ github.actor }}
+          author_email: ${{ github.actor }}@users.noreply.github.com
+          message: "Set image tag to `${{ env.IMAGE_TAG }}`"
