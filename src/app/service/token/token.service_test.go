@@ -2,6 +2,7 @@ package token
 
 import (
 	"github.com/bxcodec/faker/v3"
+	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	dto "github.com/isd-sgcu/rnkm65-auth/src/app/dto/auth"
@@ -146,7 +147,7 @@ func (t *TokenServiceTest) TestValidateAccessTokenSuccess() {
 	var accessToken string
 
 	cacheRepo := cache.RepositoryMock{}
-	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &accessToken).Return(nil)
+	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &accessToken).Return(&token, nil)
 
 	srv := NewTokenService(&jwtSrv, &cacheRepo)
 
@@ -212,4 +213,52 @@ func testValidateAccessTokenInvalidTokenInvalidCase(t *testing.T, conf *config.J
 
 	assert.Equal(t, payload, actual)
 	assert.Equal(t, want.Error(), err.Error())
+}
+
+func (t *TokenServiceTest) TestValidateAccessTokenNotMatchWithCache() {
+	want := errors.New("Invalid token")
+	token := faker.Word()
+
+	jwtSrv := mock.JwtServiceMock{}
+	jwtSrv.On("VerifyAuth", token).Return(&jwt.Token{
+		Claims: t.TokenDecoded,
+		Valid:  true,
+	}, nil)
+	jwtSrv.On("GetConfig").Return(t.Conf, nil)
+
+	var accessToken string
+
+	cacheRepo := cache.RepositoryMock{}
+	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &accessToken).Return(faker.Word(), nil)
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
+
+	actual, err := srv.Validate(token)
+
+	assert.Nil(t.T(), actual)
+	assert.Equal(t.T(), want, err)
+}
+
+func (t *TokenServiceTest) TestValidateCacheNotFoundUser() {
+	want := errors.New("Invalid token")
+	token := faker.Word()
+
+	jwtSrv := mock.JwtServiceMock{}
+	jwtSrv.On("VerifyAuth", token).Return(&jwt.Token{
+		Claims: t.TokenDecoded,
+		Valid:  true,
+	}, nil)
+	jwtSrv.On("GetConfig").Return(t.Conf, nil)
+
+	var accessToken string
+
+	cacheRepo := cache.RepositoryMock{}
+	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &accessToken).Return(nil, redis.Nil)
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
+
+	actual, err := srv.Validate(token)
+
+	assert.Nil(t.T(), actual)
+	assert.Equal(t.T(), want, err)
 }

@@ -92,6 +92,10 @@ func (s *Service) Validate(token string) (*dto.TokenPayloadAuth, error) {
 		return nil, errors.New("Invalid token")
 	}
 
+	if cacheToken != token {
+		return nil, errors.New("Invalid token")
+	}
+
 	return &dto.TokenPayloadAuth{
 		UserId: payload["user_id"].(string),
 		Role:   payload["role"].(string),
