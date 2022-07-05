@@ -8,7 +8,7 @@ on:
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
-  IMAGE_TAG: ${GITHUB_SHA}
+  IMAGE_TAG: ${{ github.sha }}
   GITOPS_REPO: isd-sgcu/rnkm65-gitOps
   GITOPS_DIR: /environment/dev/gateway
 
