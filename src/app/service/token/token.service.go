@@ -9,6 +9,7 @@ import (
 	"github.com/isd-sgcu/rnkm65-auth/src/config"
 	"github.com/isd-sgcu/rnkm65-auth/src/proto"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"time"
 )
 
@@ -42,6 +43,14 @@ func (s *Service) CreateCredentials(auth *model.Auth, secret string) (*proto.Cre
 	}
 
 	err = s.cacheRepository.SaveCache(auth.UserID, token, int(s.jwtService.GetConfig().ExpiresIn))
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("service", "auth").
+			Str("module", "validate").
+			Msg("Cannot connect to cache server")
+		return nil, errors.Wrapf(err, "Cannot connect to cache server")
+	}
 
 	credential := &proto.Credential{
 		AccessToken:  token,
@@ -72,7 +81,12 @@ func (s *Service) Validate(token string) (*dto.TokenPayloadAuth, error) {
 	err = s.cacheRepository.GetCache(payload["user_id"].(string), &cacheToken)
 	if err != nil {
 		if err != redis.Nil {
-			return nil, errors.New("Cannot connect to cache server")
+			log.Error().
+				Err(err).
+				Str("service", "auth").
+				Str("module", "validate").
+				Msg("Cannot connect to cache server")
+			return nil, errors.Wrapf(err, "Cannot connect to cache server")
 		}
 
 		return nil, errors.New("Invalid token")
