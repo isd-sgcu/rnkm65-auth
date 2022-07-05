@@ -101,7 +101,6 @@ func main() {
 			Msg("Failed to start service")
 	}
 
-	log.Print(conf.Redis)
 	cacheDb, err := database.InitRedisConnect(&conf.Redis)
 	if err != nil {
 		log.Fatal().
