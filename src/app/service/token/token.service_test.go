@@ -228,15 +228,17 @@ func (t *TokenServiceTest) TestValidateAccessTokenNotMatchWithCache() {
 
 	var accessToken string
 
+	cachedToken := faker.Word()
+
 	cacheRepo := cache.RepositoryMock{}
-	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &accessToken).Return(faker.Word(), nil)
+	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &accessToken).Return(&cachedToken, nil)
 
 	srv := NewTokenService(&jwtSrv, &cacheRepo)
 
 	actual, err := srv.Validate(token)
 
 	assert.Nil(t.T(), actual)
-	assert.Equal(t.T(), want, err)
+	assert.Equal(t.T(), want.Error(), err.Error())
 }
 
 func (t *TokenServiceTest) TestValidateCacheNotFoundUser() {
@@ -260,5 +262,5 @@ func (t *TokenServiceTest) TestValidateCacheNotFoundUser() {
 	actual, err := srv.Validate(token)
 
 	assert.Nil(t.T(), actual)
-	assert.Equal(t.T(), want, err)
+	assert.Equal(t.T(), want.Error(), err.Error())
 }
