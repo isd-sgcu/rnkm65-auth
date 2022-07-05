@@ -56,12 +56,13 @@ jobs:
           repository: ${{ env.GITOPS_REPO }}
           ssh-key: ${{ secrets.GITOPS_SSH_KEY }}
 
-      - name: Setup kustomize
-        uses: imranismail/setup-kustomize@v1
+      - name: "Setup Kustomize"
+        uses: karancode/kustomize-github-action@master
+        with:
+          kustomize_build_dir: ${{ env.GITOPS_DIR }}
 
       - name: Set image
         run: |
-          cd ${{ env.GITOPS_DIR }}
           kustomize edit set image ${{ env.IMAGE_NAME }}=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           git add .
           git commit -m "Set image tag to `${{ env.IMAGE_TAG }}`"
