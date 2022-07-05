@@ -11,14 +11,8 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
   IMAGE_TAG: ${{ github.sha }}
   GITOPS_REPO: isd-sgcu/rnkm65-gitOps
-  GITOPS_DIR: environment/dev/gateway
-
-env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}
-  IMAGE_TAG: ${{ github.sha }}
-  GITOPS_REPO: isd-sgcu/rnkm65-gitOps
   GITOPS_BASE_PATH: environment
-  GITOPS_SERVICE_NAME: gateway
+  GITOPS_SERVICE_NAME: auth
 
 jobs:
   build:
@@ -36,13 +30,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-<<<<<<< HEAD
       - name: Set branch
         run: |
           echo "::set-output name=BRANCH::${GITHUB_REF#refs/heads/}"
 
-=======
->>>>>>> 2d9a90958f318ec4d58f2e5e1867659e37633ceb
       - name: Log in to the Container Registry
         uses: docker/login-action@v1
         with:
@@ -59,12 +50,9 @@ jobs:
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
 
-<<<<<<< HEAD
     outputs:
       BRANCH: ${{ steps.identify.outputs.BRANCH }}
 
-=======
->>>>>>> 2d9a90958f318ec4d58f2e5e1867659e37633ceb
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
