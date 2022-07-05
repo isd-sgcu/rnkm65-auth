@@ -67,7 +67,8 @@ jobs:
           repository: ${{ env.GITOPS_REPO }}
           ssh-key: ${{ secrets.GITOPS_SSH_KEY }}
 
-      - run: echo "PATH=${{ env.GITOPS_BASE_PATH }}/${{ needs.build.outputs.BRANCH }}/${{ env.GITOPS_SERVICE_NAME }}" >> $GITHUB_ENV
+      - name: Set dir path
+        run: echo "PATH=${{ env.GITOPS_BASE_PATH }}/${{ needs.build.outputs.BRANCH }}/${{ env.GITOPS_SERVICE_NAME }}" >> $GITHUB_ENV
 
       - name: "Setup Kustomize"
         uses: karancode/kustomize-github-action@master
