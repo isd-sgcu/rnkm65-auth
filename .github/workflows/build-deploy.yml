@@ -62,6 +62,7 @@ jobs:
 
       - name: Set image
         run: |
+          echo $(PWD)
           kustomize edit set image ${{ env.IMAGE_NAME }}=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           git add .
           git commit -m "Set image tag to `${{ env.IMAGE_TAG }}`"
