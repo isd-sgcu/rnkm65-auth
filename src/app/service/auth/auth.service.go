@@ -90,17 +90,27 @@ func (s *Service) VerifyTicket(_ context.Context, req *proto.VerifyTicketRequest
 						Err(err).
 						Str("service", "auth").
 						Str("module", "verify ticket").
-						Msgf("Cannot parse %s to int of student id %s", year, ssoData.Ouid)
+						Msg("Cannot parse student id to int")
 					return nil, status.Error(codes.Internal, "Internal service error")
 				}
 
 				if yearInt > s.conf.MaxRestrictYear {
+					log.Error().
+						Str("service", "auth").
+						Str("module", "verify ticket").
+						Str("student_id", ssoData.Ouid).
+						Msg("Someone is trying to login (forbidden year)")
 					return nil, status.Error(codes.PermissionDenied, "Forbidden study year")
 				}
 
 				faculty, err := utils.GetFacultyFromID(ssoData.Ouid)
 				if err != nil {
-					return nil, err
+					log.Error().
+						Err(err).
+						Str("service", "auth").
+						Str("module", "verify ticket").
+						Msg("Cannot get faculty from student id")
+					return nil, status.Error(codes.Internal, "Internal service error")
 				}
 
 				in := &proto.User{
@@ -158,6 +168,12 @@ func (s *Service) VerifyTicket(_ context.Context, req *proto.VerifyTicketRequest
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	log.Info().
+		Str("service", "auth").
+		Str("module", "verify ticket").
+		Str("student_id", user.StudentID).
+		Msg("User login to the service")
 
 	return &proto.VerifyTicketResponse{Credential: credentials}, err
 }
