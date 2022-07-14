@@ -25,10 +25,10 @@ type Service struct {
 }
 
 type App struct {
-	Port           int    `mapstructure:"port"`
-	Debug          bool   `mapstructure:"debug"`
-	Secret         string `mapstructure:"secret"`
-	MaxRestrictAge int    `mapstructure:"max_restrict_age"`
+	Port            int    `mapstructure:"port"`
+	Debug           bool   `mapstructure:"debug"`
+	Secret          string `mapstructure:"secret"`
+	MaxRestrictYear int    `mapstructure:"max_restrict_year"`
 }
 
 type ChulaSSO struct {

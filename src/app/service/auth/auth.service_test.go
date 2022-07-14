@@ -97,10 +97,10 @@ func (t *AuthServiceTest) SetupTest() {
 	t.ServiceDownErr = errors.New("service is down")
 
 	t.conf = config.App{
-		Port:           3001,
-		Debug:          false,
-		Secret:         "asuperstrong32bitpasswordgohere!",
-		MaxRestrictAge: 3,
+		Port:            3001,
+		Debug:           false,
+		Secret:          "asuperstrong32bitpasswordgohere!",
+		MaxRestrictYear: 3,
 	}
 }
 
@@ -224,6 +224,48 @@ func (t *AuthServiceTest) TestVerifyTicketInvalid() {
 	assert.True(t.T(), ok)
 	assert.Nil(t.T(), actual)
 	assert.Equal(t.T(), codes.Unauthenticated, st.Code())
+}
+
+func (t *AuthServiceTest) TestVerifyForbiddenYear() {
+	ticket := faker.Word()
+
+	t.UserDto.StudentID = "60xxxxxx21"
+	t.Auth.RefreshToken = utils.Hash([]byte(t.Auth.RefreshToken))
+
+	repo := &mock.RepositoryMock{}
+	repo.On("FindByUserID", t.UserDto.Id, &auth.Auth{}).Return(t.Auth, nil)
+	repo.On("Update", t.Auth).Return(t.Auth, nil)
+
+	chulaSSORes := &dto.ChulaSSOCredential{
+		UID:         faker.Word(),
+		Username:    faker.Username(),
+		Gecos:       faker.Username(),
+		Email:       faker.Email(),
+		Disable:     false,
+		Roles:       []string{"student"},
+		Firstname:   t.UserDto.Firstname,
+		Lastname:    t.UserDto.Lastname,
+		FirstnameTH: faker.FirstName(),
+		LastnameTH:  faker.LastName(),
+		Ouid:        t.UserDto.StudentID,
+	}
+
+	chulaSSOClient := &mock.ChulaSSOClientMock{}
+	chulaSSOClient.On("VerifyTicket", ticket, &dto.ChulaSSOCredential{}).Return(chulaSSORes, nil)
+
+	userService := &mock.UserServiceMock{}
+	userService.On("FindByStudentID", t.UserDto.StudentID).Return(nil, status.Error(codes.NotFound, "not found user"))
+
+	tokenService := &mock.TokenServiceMock{}
+	tokenService.On("CreateCredentials", t.Auth, t.conf.Secret).Return(t.Credential, nil)
+
+	srv := NewService(repo, chulaSSOClient, tokenService, userService, t.conf)
+	actual, err := srv.VerifyTicket(context.Background(), &proto.VerifyTicketRequest{Ticket: ticket})
+	st, ok := status.FromError(err)
+
+	assert.True(t.T(), ok)
+	assert.Nil(t.T(), actual)
+	assert.Equal(t.T(), codes.PermissionDenied, st.Code())
 }
 
 func (t *AuthServiceTest) TestVerifyTicketGrpcErr() {

@@ -94,7 +94,7 @@ func (s *Service) VerifyTicket(_ context.Context, req *proto.VerifyTicketRequest
 					return nil, status.Error(codes.Internal, "Internal service error")
 				}
 
-				if yearInt > s.conf.MaxRestrictAge {
+				if yearInt > s.conf.MaxRestrictYear {
 					return nil, status.Error(codes.PermissionDenied, "Forbidden study year")
 				}
 
