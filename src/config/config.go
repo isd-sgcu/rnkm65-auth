@@ -5,6 +5,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Redis struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Password string `mapstructure:"password"`
+}
+
 type Database struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
@@ -19,9 +25,10 @@ type Service struct {
 }
 
 type App struct {
-	Port   int    `mapstructure:"port"`
-	Debug  bool   `mapstructure:"debug"`
-	Secret string `mapstructure:"secret"`
+	Port            int    `mapstructure:"port"`
+	Debug           bool   `mapstructure:"debug"`
+	Secret          string `mapstructure:"secret"`
+	MaxRestrictYear int    `mapstructure:"max_restrict_year"`
 }
 
 type ChulaSSO struct {
@@ -37,6 +44,7 @@ type Jwt struct {
 }
 
 type Config struct {
+	Redis    Redis    `mapstructure:"redis"`
 	Database Database `mapstructure:"database"`
 	App      App      `mapstructure:"app"`
 	ChulaSSO ChulaSSO `mapstructure:"chula-sso"`

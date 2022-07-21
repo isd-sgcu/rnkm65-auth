@@ -1,6 +1,9 @@
 package auth
 
-import "github.com/golang-jwt/jwt/v4"
+import (
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/isd-sgcu/rnkm65-auth/src/constant/auth"
+)
 
 type ChulaSSOCredential struct {
 	UID         string   `json:"uid"`
@@ -19,5 +22,14 @@ type ChulaSSOCredential struct {
 type TokenPayloadAuth struct {
 	jwt.RegisteredClaims
 	UserId string `json:"user_id"`
-	Role   string `json:"role"`
+}
+
+type UserCredential struct {
+	UserId string    `json:"user_id"`
+	Role   auth.Role `json:"role"`
+}
+
+type CacheAuth struct {
+	Token string    `json:"token"`
+	Role  auth.Role `json:"role"`
 }

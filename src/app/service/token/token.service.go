@@ -1,18 +1,22 @@
 package token
 
 import (
+	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	dto "github.com/isd-sgcu/rnkm65-auth/src/app/dto/auth"
 	model "github.com/isd-sgcu/rnkm65-auth/src/app/model/auth"
 	"github.com/isd-sgcu/rnkm65-auth/src/config"
+	role "github.com/isd-sgcu/rnkm65-auth/src/constant/auth"
 	"github.com/isd-sgcu/rnkm65-auth/src/proto"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"time"
 )
 
 type Service struct {
-	jwtService IJwtService
+	jwtService      IJwtService
+	cacheRepository ICacheRepository
 }
 
 type IJwtService interface {
@@ -21,9 +25,15 @@ type IJwtService interface {
 	GetConfig() *config.Jwt
 }
 
-func NewTokenService(jwtService IJwtService) *Service {
+type ICacheRepository interface {
+	SaveCache(string, interface{}, int) error
+	GetCache(string, interface{}) error
+}
+
+func NewTokenService(jwtService IJwtService, cacheRepository ICacheRepository) *Service {
 	return &Service{
-		jwtService: jwtService,
+		jwtService:      jwtService,
+		cacheRepository: cacheRepository,
 	}
 }
 
@@ -31,6 +41,21 @@ func (s *Service) CreateCredentials(auth *model.Auth, secret string) (*proto.Cre
 	token, err := s.jwtService.SignAuth(auth)
 	if err != nil {
 		return nil, err
+	}
+
+	cache := dto.CacheAuth{
+		Token: token,
+		Role:  role.Role(auth.Role),
+	}
+
+	err = s.cacheRepository.SaveCache(auth.UserID, &cache, int(s.jwtService.GetConfig().ExpiresIn))
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("service", "auth").
+			Str("module", "validate").
+			Msg("Cannot connect to cache server")
+		return nil, errors.New("Internal service error")
 	}
 
 	credential := &proto.Credential{
@@ -42,7 +67,7 @@ func (s *Service) CreateCredentials(auth *model.Auth, secret string) (*proto.Cre
 	return credential, nil
 }
 
-func (s *Service) Validate(token string) (*dto.TokenPayloadAuth, error) {
+func (s *Service) Validate(token string) (*dto.UserCredential, error) {
 	t, err := s.jwtService.VerifyAuth(token)
 	if err != nil {
 		return nil, err
@@ -58,9 +83,28 @@ func (s *Service) Validate(token string) (*dto.TokenPayloadAuth, error) {
 		return nil, errors.New("Token is expired")
 	}
 
-	return &dto.TokenPayloadAuth{
+	cache := dto.CacheAuth{}
+	err = s.cacheRepository.GetCache(payload["user_id"].(string), &cache)
+	if err != nil {
+		if err != redis.Nil {
+			log.Error().
+				Err(err).
+				Str("service", "auth").
+				Str("module", "validate").
+				Msg("Cannot connect to cache server")
+			return nil, errors.New("Internal service error")
+		}
+
+		return nil, errors.New("Invalid token")
+	}
+
+	if cache.Token != token {
+		return nil, errors.New("Invalid token")
+	}
+
+	return &dto.UserCredential{
 		UserId: payload["user_id"].(string),
-		Role:   payload["role"].(string),
+		Role:   cache.Role,
 	}, nil
 }
 

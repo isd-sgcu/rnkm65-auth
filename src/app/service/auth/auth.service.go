@@ -5,11 +5,13 @@ import (
 	dto "github.com/isd-sgcu/rnkm65-auth/src/app/dto/auth"
 	model "github.com/isd-sgcu/rnkm65-auth/src/app/model/auth"
 	"github.com/isd-sgcu/rnkm65-auth/src/app/utils"
-	"github.com/isd-sgcu/rnkm65-auth/src/constant"
+	"github.com/isd-sgcu/rnkm65-auth/src/config"
+	role "github.com/isd-sgcu/rnkm65-auth/src/constant/auth"
 	"github.com/isd-sgcu/rnkm65-auth/src/proto"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"strconv"
 )
 
 type Service struct {
@@ -17,7 +19,7 @@ type Service struct {
 	chulaSSOClient IChulaSSOClient
 	tokenService   ITokenService
 	userService    IUserService
-	secret         string
+	conf           config.App
 }
 
 type IRepository interface {
@@ -38,7 +40,7 @@ type IUserService interface {
 
 type ITokenService interface {
 	CreateCredentials(*model.Auth, string) (*proto.Credential, error)
-	Validate(string) (*dto.TokenPayloadAuth, error)
+	Validate(string) (*dto.UserCredential, error)
 }
 
 func NewService(
@@ -46,14 +48,14 @@ func NewService(
 	chulaSSOClient IChulaSSOClient,
 	tokenService ITokenService,
 	userService IUserService,
-	secret string,
+	conf config.App,
 ) *Service {
 	return &Service{
 		repo:           repo,
 		chulaSSOClient: chulaSSOClient,
 		tokenService:   tokenService,
 		userService:    userService,
-		secret:         secret,
+		conf:           conf,
 	}
 }
 
@@ -63,7 +65,12 @@ func (s *Service) VerifyTicket(_ context.Context, req *proto.VerifyTicketRequest
 
 	err = s.chulaSSOClient.VerifyTicket(req.Ticket, &ssoData)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		log.Error().
+			Err(err).
+			Str("service", "auth service").
+			Str("module", "verify ticket").
+			Msgf("Someone is trying to logging in using SSO ticket")
+		return nil, err
 	}
 
 	user, err := s.userService.FindByStudentID(ssoData.Ouid)
@@ -77,12 +84,38 @@ func (s *Service) VerifyTicket(_ context.Context, req *proto.VerifyTicketRequest
 					return nil, err
 				}
 
+				yearInt, err := strconv.Atoi(year)
+				if err != nil {
+					log.Error().
+						Err(err).
+						Str("service", "auth").
+						Str("module", "verify ticket").
+						Msg("Cannot parse student id to int")
+					return nil, status.Error(codes.Internal, "Internal service error")
+				}
+
+				if yearInt > s.conf.MaxRestrictYear {
+					log.Error().
+						Str("service", "auth").
+						Str("module", "verify ticket").
+						Str("student_id", ssoData.Ouid).
+						Msg("Someone is trying to login (forbidden year)")
+					return nil, status.Error(codes.PermissionDenied, "Forbidden study year")
+				}
+
 				faculty, err := utils.GetFacultyFromID(ssoData.Ouid)
 				if err != nil {
-					return nil, err
+					log.Error().
+						Err(err).
+						Str("service", "auth").
+						Str("module", "verify ticket").
+						Msg("Cannot get faculty from student id")
+					return nil, status.Error(codes.Internal, "Internal service error")
 				}
 
 				in := &proto.User{
+					Firstname: ssoData.Firstname,
+					Lastname:  ssoData.Lastname,
 					StudentID: ssoData.Ouid,
 					Year:      year,
 					Faculty:   faculty.FacultyEN,
@@ -94,7 +127,7 @@ func (s *Service) VerifyTicket(_ context.Context, req *proto.VerifyTicketRequest
 				}
 
 				auth = model.Auth{
-					Role:   constant.USER,
+					Role:   role.USER,
 					UserID: user.Id,
 				}
 
@@ -136,25 +169,31 @@ func (s *Service) VerifyTicket(_ context.Context, req *proto.VerifyTicketRequest
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	log.Info().
+		Str("service", "auth").
+		Str("module", "verify ticket").
+		Str("student_id", user.StudentID).
+		Msg("User login to the service")
+
 	return &proto.VerifyTicketResponse{Credential: credentials}, err
 }
 
 func (s *Service) Validate(_ context.Context, req *proto.ValidateRequest) (res *proto.ValidateResponse, err error) {
-	payload, err := s.tokenService.Validate(req.Token)
+	credential, err := s.tokenService.Validate(req.Token)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	return &proto.ValidateResponse{
-		UserId: payload.UserId,
-		Role:   payload.Role,
+		UserId: credential.UserId,
+		Role:   string(credential.Role),
 	}, nil
 }
 
 func (s *Service) RefreshToken(_ context.Context, req *proto.RefreshTokenRequest) (res *proto.RefreshTokenResponse, err error) {
 	auth := model.Auth{}
 
-	err = s.repo.FindByRefreshToken(req.RefreshToken, &auth)
+	err = s.repo.FindByRefreshToken(utils.Hash([]byte(req.RefreshToken)), &auth)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "Invalid refresh token")
 	}
@@ -172,12 +211,12 @@ func (s *Service) RefreshToken(_ context.Context, req *proto.RefreshTokenRequest
 }
 
 func (s *Service) CreateNewCredential(auth *model.Auth) (*proto.Credential, error) {
-	credentials, err := s.tokenService.CreateCredentials(auth, s.secret)
+	credentials, err := s.tokenService.CreateCredentials(auth, s.conf.Secret)
 	if err != nil {
 		return nil, err
 	}
 
-	auth.RefreshToken = credentials.RefreshToken
+	auth.RefreshToken = utils.Hash([]byte(credentials.RefreshToken))
 
 	err = s.repo.Update(auth.ID.String(), auth)
 	if err != nil {

@@ -2,14 +2,16 @@ package token
 
 import (
 	"github.com/bxcodec/faker/v3"
+	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	dto "github.com/isd-sgcu/rnkm65-auth/src/app/dto/auth"
 	base "github.com/isd-sgcu/rnkm65-auth/src/app/model"
 	model "github.com/isd-sgcu/rnkm65-auth/src/app/model/auth"
 	"github.com/isd-sgcu/rnkm65-auth/src/config"
-	"github.com/isd-sgcu/rnkm65-auth/src/constant"
+	"github.com/isd-sgcu/rnkm65-auth/src/constant/auth"
 	mock "github.com/isd-sgcu/rnkm65-auth/src/mocks/auth"
+	"github.com/isd-sgcu/rnkm65-auth/src/mocks/cache"
 	"github.com/isd-sgcu/rnkm65-auth/src/proto"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +56,7 @@ func (t *TokenServiceTest) SetupTest() {
 			DeletedAt: gorm.DeletedAt{},
 		},
 		UserID:       faker.UUIDDigit(),
-		Role:         constant.USER,
+		Role:         auth.USER,
 		RefreshToken: faker.Word(),
 	}
 
@@ -66,7 +68,6 @@ func (t *TokenServiceTest) SetupTest() {
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
 			},
 			UserId: t.Auth.UserID,
-			Role:   t.Auth.Role,
 		},
 		Valid: true,
 	}
@@ -78,7 +79,6 @@ func (t *TokenServiceTest) SetupTest() {
 			IssuedAt:  t.Token.Claims.(dto.TokenPayloadAuth).IssuedAt,
 		},
 		UserId: t.Auth.UserID,
-		Role:   t.Auth.Role,
 	}
 
 	t.TokenDecoded = jwt.MapClaims{}
@@ -96,7 +96,17 @@ func (t *TokenServiceTest) TestCreateCredentialsSuccess() {
 	jwtSrv.On("SignAuth", t.Auth).Return(t.Credential.AccessToken, nil)
 	jwtSrv.On("GetConfig").Return(t.Conf, nil)
 
-	srv := NewTokenService(&jwtSrv)
+	cacheData := &dto.CacheAuth{
+		Token: t.Credential.AccessToken,
+		Role:  auth.USER,
+	}
+
+	cacheRepo := cache.RepositoryMock{
+		V: map[string]interface{}{},
+	}
+	cacheRepo.On("SaveCache", t.TokenDecoded["user_id"], cacheData, 3600).Return(nil)
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
 
 	actual, err := srv.CreateCredentials(t.Auth, "asuperstrong32bitpasswordgohere!")
 
@@ -111,7 +121,9 @@ func (t *TokenServiceTest) TestCreateCredentialsInternalErr() {
 	jwtSrv := mock.JwtServiceMock{}
 	jwtSrv.On("SignAuth", t.Auth).Return("", errors.New("Error while signing the token"))
 
-	srv := NewTokenService(&jwtSrv)
+	cacheRepo := cache.RepositoryMock{}
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
 
 	actual, err := srv.CreateCredentials(t.Auth, "asuperstrong32bitpasswordgohere!")
 
@@ -122,9 +134,9 @@ func (t *TokenServiceTest) TestCreateCredentialsInternalErr() {
 }
 
 func (t *TokenServiceTest) TestValidateAccessTokenSuccess() {
-	want := &dto.TokenPayloadAuth{
+	want := &dto.UserCredential{
 		UserId: t.Token.Claims.(dto.TokenPayloadAuth).UserId,
-		Role:   t.Token.Claims.(dto.TokenPayloadAuth).Role,
+		Role:   auth.Role(t.Auth.Role),
 	}
 	token := faker.Word()
 
@@ -135,7 +147,14 @@ func (t *TokenServiceTest) TestValidateAccessTokenSuccess() {
 	}, nil)
 	jwtSrv.On("GetConfig").Return(t.Conf, nil)
 
-	srv := NewTokenService(&jwtSrv)
+	cacheAuth := dto.CacheAuth{
+		Token: token,
+		Role:  auth.USER,
+	}
+	cacheRepo := cache.RepositoryMock{}
+	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &dto.CacheAuth{}).Return(&cacheAuth, nil)
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
 
 	actual, err := srv.Validate(token)
 
@@ -168,11 +187,13 @@ func testValidateAccessTokenInvalidTokenMalformedToken(t *testing.T, refreshToke
 	jwtSrv := mock.JwtServiceMock{}
 	jwtSrv.On("VerifyAuth", refreshToken).Return(nil, errors.New("Error while signing the token"))
 
-	srv := NewTokenService(&jwtSrv)
+	cacheRepo := cache.RepositoryMock{}
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
 
 	actual, err := srv.Validate(refreshToken)
 
-	var payload *dto.TokenPayloadAuth
+	var payload *dto.UserCredential
 
 	assert.Equal(t, payload, actual)
 	assert.Equal(t, want.Error(), err.Error())
@@ -187,12 +208,63 @@ func testValidateAccessTokenInvalidTokenInvalidCase(t *testing.T, conf *config.J
 	jwtSrv.On("VerifyAuth", in).Return(tokenDecoded, nil)
 	jwtSrv.On("GetConfig").Return(conf, nil)
 
-	srv := NewTokenService(&jwtSrv)
+	cacheRepo := cache.RepositoryMock{}
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
 
 	actual, err := srv.Validate(in)
 
-	var payload *dto.TokenPayloadAuth
+	var payload *dto.UserCredential
 
 	assert.Equal(t, payload, actual)
 	assert.Equal(t, want.Error(), err.Error())
+}
+
+func (t *TokenServiceTest) TestValidateAccessTokenNotMatchWithCache() {
+	want := errors.New("Invalid token")
+	token := faker.Word()
+
+	cacheAuth := dto.CacheAuth{
+		Token: faker.Word(),
+		Role:  auth.Role(t.Auth.Role),
+	}
+
+	jwtSrv := mock.JwtServiceMock{}
+	jwtSrv.On("VerifyAuth", token).Return(&jwt.Token{
+		Claims: t.TokenDecoded,
+		Valid:  true,
+	}, nil)
+	jwtSrv.On("GetConfig").Return(t.Conf, nil)
+
+	cacheRepo := cache.RepositoryMock{}
+	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &dto.CacheAuth{}).Return(&cacheAuth, nil)
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
+
+	actual, err := srv.Validate(token)
+
+	assert.Nil(t.T(), actual)
+	assert.Equal(t.T(), want.Error(), err.Error())
+}
+
+func (t *TokenServiceTest) TestValidateCacheNotFoundUser() {
+	want := errors.New("Invalid token")
+	token := faker.Word()
+
+	jwtSrv := mock.JwtServiceMock{}
+	jwtSrv.On("VerifyAuth", token).Return(&jwt.Token{
+		Claims: t.TokenDecoded,
+		Valid:  true,
+	}, nil)
+	jwtSrv.On("GetConfig").Return(t.Conf, nil)
+
+	cacheRepo := cache.RepositoryMock{}
+	cacheRepo.On("GetCache", t.TokenDecoded["user_id"], &dto.CacheAuth{}).Return(nil, redis.Nil)
+
+	srv := NewTokenService(&jwtSrv, &cacheRepo)
+
+	actual, err := srv.Validate(token)
+
+	assert.Nil(t.T(), actual)
+	assert.Equal(t.T(), want.Error(), err.Error())
 }

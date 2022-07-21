@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	ar "github.com/isd-sgcu/rnkm65-auth/src/app/repository/auth"
+	"github.com/isd-sgcu/rnkm65-auth/src/app/repository/cache"
 	as "github.com/isd-sgcu/rnkm65-auth/src/app/service/auth"
 	js "github.com/isd-sgcu/rnkm65-auth/src/app/service/jwt"
 	ts "github.com/isd-sgcu/rnkm65-auth/src/app/service/token"
@@ -100,6 +101,14 @@ func main() {
 			Msg("Failed to start service")
 	}
 
+	cacheDB, err := database.InitRedisConnect(&conf.Redis)
+	if err != nil {
+		log.Fatal().
+			Err(err).
+			Str("service", "auth").
+			Msg("Failed to start service")
+	}
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", conf.App.Port))
 	if err != nil {
 		log.Fatal().
@@ -120,16 +129,18 @@ func main() {
 
 	cSSO := client.NewChulaSSO(conf.ChulaSSO)
 
+	cacheRepo := cache.NewRepository(cacheDB)
+
 	usrClient := proto.NewUserServiceClient(backendConn)
 	usrSrv := user.NewUserService(usrClient)
 
 	stg := jsg.NewJwtStrategy(conf.Jwt.Secret)
 	jtSrv := js.NewJwtService(conf.Jwt, stg)
 
-	tkSrv := ts.NewTokenService(jtSrv)
+	tkSrv := ts.NewTokenService(jtSrv, cacheRepo)
 
 	aRepo := ar.NewRepository(db)
-	aSrv := as.NewService(aRepo, cSSO, tkSrv, usrSrv, conf.App.Secret)
+	aSrv := as.NewService(aRepo, cSSO, tkSrv, usrSrv, conf.App)
 
 	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 	proto.RegisterAuthServiceServer(grpcServer, aSrv)
@@ -159,6 +170,9 @@ func main() {
 		"server": func(ctx context.Context) error {
 			grpcServer.GracefulStop()
 			return nil
+		},
+		"cache": func(ctx context.Context) error {
+			return cacheDB.Close()
 		},
 	})
 
